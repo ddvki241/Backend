@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Лабораторна №4 - Повний CRUD через Fetch API</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 24px; background: #f8fafc; color: #0f172a; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 850px; margin: 0 auto; }
+        table { border-collapse: collapse; width: 100%; margin-top: 15px; }
+        th, td { border: 1px solid #e2e8f0; padding: 10px 12px; text-align: left; }
+        th { background-color: #f1f5f9; }
+        .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
+        input { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 4px; }
+        button { padding: 8px 14px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; color: white; }
+        .btn-get { background: #64748b; }
+        .btn-post { background: #10b981; }
+        .btn-put { background: #f59e0b; }
+        .btn-delete { background: #ef4444; }
+        .btn-get:hover { background: #475569; }
+        .btn-post:hover { background: #059669; }
+        .btn-put:hover { background: #d97706; }
+        .btn-delete:hover { background: #dc2626; }
+        #log { margin-top: 15px; padding: 10px; background: #f1f5f9; border-radius: 4px; font-family: monospace; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🌐 Тестування REST API (CRUD для CSV)</h2>
+
+        <div class="controls">
+            <input type="number" id="routerId" placeholder="ID (напр. 1)">
+            <button class="btn-get" onclick="fetchAll()">Отримати всі (GET)</button>
+            <button class="btn-get" onclick="fetchOne()">Знайти за ID (GET)</button>
+            <button class="btn-post" onclick="createRouter()">+ Додати роутер (POST)</button>
+            <button class="btn-put" onclick="updateRouter()">Оновити ID (PUT)</button>
+            <button class="btn-delete" onclick="deleteRouter()">Видалити ID (DELETE)</button>
+        </div>
+
+        <div id="log">Статус відповіді API відображатиметься тут...</div>
+        <div id="output"></div>
+    </div>
+
+    <script>
+        const API_URL = 'api.php';
+
+        function logMessage(msg) {
+            document.getElementById('log').innerHTML = `<b>Лог API:</b> ${msg}`;
+        }
+
+        // 1. GET ALL
+        function fetchAll() {
+            fetch(API_URL)
+                .then(res => res.json())
+                .then(data => {
+                    logMessage(`Отримано список усяких записів (код 200)`);
+                    renderTable(data.data);
+                });
+        }
+
+        // 2. GET ONE
+        function fetchOne() {
+            const id = document.getElementById('routerId').value;
+            if (!id) return alert('Введіть ID!');
+
+            fetch(`${API_URL}?id=${id}`)
+                .then(res => res.json().then(body => ({ status: res.status, body })))
+                .then(res => {
+                    if (res.status === 200) {
+                        logMessage(`Знайдено запис ID ${id}`);
+                        renderTable([res.body.data]);
+                    } else {
+                        logMessage(`<span style="color:red">Помилка ${res.status}: ${res.body.message}</span>`);
+                        document.getElementById('output').innerHTML = '';
+                    }
+                });
+        }
+
+        // 3. POST (CREATE)
+        function createRouter() {
+            const newRouter = {
+                model: 'Archer AX73 (New)',
+                vendor: 'TP-Link',
+                price: 3400,
+                manufacturerId: 1
+            };
+
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newRouter)
+            })
+            .then(res => res.json())
+            .then(data => {
+                logMessage(`<span style="color:green">${data.message} (Новий ID: ${data.id})</span>`);
+                fetchAll(); // Оновлюємо таблицю
+            });
+        }
+
+        // 4. PUT (UPDATE)
+        function updateRouter() {
+            const id = document.getElementById('routerId').value || 1;
+            const updatedData = {
+                model: 'TUF AX4200 (Updated)',
+                vendor: 'ASUS',
+                price: 4900,
+                manufacturerId: 2
+            };
+
+            fetch(`${API_URL}?id=${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedData)
+            })
+            .then(res => res.json().then(body => ({ status: res.status, body })))
+            .then(res => {
+                if (res.status === 200) {
+                    logMessage(`<span style="color:orange">${res.body.message}</span>`);
+                    fetchAll();
+                } else {
+                    logMessage(`<span style="color:red">Помилка ${res.status}: ${res.body.message}</span>`);
+                }
+            });
+        }
+
+        // 5. DELETE
+        function deleteRouter() {
+            const id = document.getElementById('routerId').value;
+            if (!id) return alert('Введіть ID для видалення!');
+
+            fetch(`${API_URL}?id=${id}`, {
+                method: 'DELETE'
+            })
+            .then(res => res.json().then(body => ({ status: res.status, body })))
+            .then(res => {
+                if (res.status === 200) {
+                    logMessage(`<span style="color:red">${res.body.message}</span>`);
+                    fetchAll();
+                } else {
+                    logMessage(`<span style="color:red">Помилка ${res.status}: ${res.body.message}</span>`);
+                }
+            });
+        }
+
+        function renderTable(items) {
+            if (!items || items.length === 0) {
+                document.getElementById('output').innerHTML = '<p>Записи відсутні.</p>';
+                return;
+            }
+
+            let html = `<table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Модель</th>
+                        <th>Вендор</th>
+                        <th>Ціна (грн)</th>
+                        <th>Виробник</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            items.forEach(item => {
+                html += `<tr>
+                    <td><b>${item.id}</b></td>
+                    <td>${item.model}</td>
+                    <td>${item.vendor}</td>
+                    <td>${item.price}</td>
+                    <td>${item.manufacturer_name}</td>
+                </tr>`;
+            });
+
+            html += `</tbody></table>`;
+            document.getElementById('output').innerHTML = html;
+        }
+
+        window.onload = fetchAll;
+    </script>
+</body>
+</html>
